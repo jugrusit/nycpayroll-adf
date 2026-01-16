@@ -1,0 +1,38 @@
+{
+	"name": "ds_EmpMaster_CSV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLS_NYCPayroll",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "EmpMaster.csv",
+				"folderPath": "dirpayrollfiles",
+				"fileSystem": "nycpayroll"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "EmployeeID",
+				"type": "String"
+			},
+			{
+				"name": "LastName",
+				"type": "String"
+			},
+			{
+				"name": "FirstName",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,166 @@
+{
+	"name": "DF_Summary_Aggregation",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_Payroll2020_SQL",
+						"type": "DatasetReference"
+					},
+					"name": "src2020"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_Payroll2021_SQL",
+						"type": "DatasetReference"
+					},
+					"name": "src2021"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_PayrollSummary_SQL",
+						"type": "DatasetReference"
+					},
+					"name": "SQLSummaryTable"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_Staging_Summary",
+						"type": "DatasetReference"
+					},
+					"name": "ADLSStaging"
+				}
+			],
+			"transformations": [
+				{
+					"name": "select2021"
+				},
+				{
+					"name": "UNION"
+				},
+				{
+					"name": "Filter"
+				},
+				{
+					"name": "TotalPaid"
+				},
+				{
+					"name": "Aggregate"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     dataflow_param_fiscalyear as integer (2020)",
+				"}",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyID as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> src2020",
+				"source(output(",
+				"          FiscalYear as integer,",
+				"          PayrollNumber as integer,",
+				"          AgencyCode as string,",
+				"          AgencyName as string,",
+				"          EmployeeID as string,",
+				"          LastName as string,",
+				"          FirstName as string,",
+				"          AgencyStartDate as date,",
+				"          WorkLocationBorough as string,",
+				"          TitleCode as string,",
+				"          TitleDescription as string,",
+				"          LeaveStatusasofJune30 as string,",
+				"          BaseSalary as double,",
+				"          PayBasis as string,",
+				"          RegularHours as double,",
+				"          RegularGrossPaid as double,",
+				"          OTHours as double,",
+				"          TotalOTPaid as double,",
+				"          TotalOtherPay as double",
+				"     ),",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> src2021",
+				"src2021 select(mapColumn(",
+				"          FiscalYear,",
+				"          PayrollNumber,",
+				"          AgencyID = AgencyCode,",
+				"          FiscalYear,",
+				"          AgencyName,",
+				"          EmployeeID,",
+				"          LastName,",
+				"          FirstName,",
+				"          AgencyStartDate,",
+				"          WorkLocationBorough,",
+				"          TitleCode,",
+				"          TitleDescription,",
+				"          LeaveStatusasofJune30,",
+				"          BaseSalary,",
+				"          PayBasis,",
+				"          RegularHours,",
+				"          RegularGrossPaid,",
+				"          OTHours,",
+				"          TotalOTPaid,",
+				"          TotalOtherPay",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select2021",
+				"src2020, select2021 union(byName: true)~> UNION",
+				"UNION filter(toInteger(FiscalYear) >= $dataflow_param_fiscalyear) ~> Filter",
+				"Filter derive(TotalPaid = toFloat(RegularGrossPaid) + toFloat(TotalOTPaid) + toFloat(TotalOtherPay)) ~> TotalPaid",
+				"TotalPaid aggregate(groupBy(FiscalYear,",
+				"          AgencyName),",
+				"     TotalPaid = sum(TotalPaid)) ~> Aggregate",
+				"Aggregate sink(allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     input(",
+				"          FiscalYear as integer,",
+				"          AgencyName as string,",
+				"          TotalPaid as double",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> SQLSummaryTable",
+				"Aggregate sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     truncate: true,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> ADLSStaging"
+			]
+		}
+	}
+}
